@@ -117,45 +117,49 @@ def rollback_data(attr, val):
     if attr == "Female":
         ret_attr = "Gender"
         if int(val) == 1:
-            ret_val = "Female"
+            ret_val = {'ge': ["Female"], 'lt': ["Male"]}
         elif int(val) == 0:
-            ret_val = "Male"
+            print("122")
+            ret_val = {'ge': ["Female", "Male"], 'lt': []}
     if attr == "Married":
         ret_attr = "Married"
         if int(val) == 1:
-            ret_val = "Yes"
+            ret_val = {'ge': ["Yes"], 'lt': ["No"]}
         elif int(val) == 0:
-            ret_val = "No"
+            print("129")
+            ret_val = {'ge': ["Yes", "No"], 'lt': []}
     if attr == "Graduation":
         ret_attr = "Education"
         if int(val) == 1:
-            ret_val = "Graduated"
+            ret_val = {'ge': ["Graduated"], 'lt': ["Not Graduate"]}
         elif int(val) == 0:
-            ret_val = "Not Graduate"
+            print("136")
+            ret_val = {'ge': ["Graduated", "Not Graduate"], 'lt': []}
     if attr == "Self_Employed":
         ret_attr = "Self_Employed"
         if int(val) == 1:
-            ret_val = "Yes"
+            ret_val = {'ge': ["Yes"], 'lt': ["No"]}
         elif int(val) == 0:
-            ret_val = "No"
+            print("143")
+            ret_val = {'ge': ["Yes", "No"], 'lt': []}
     if attr == "Property_Area":
         ret_attr = "Property_Area"
         if int(val) == 2:
-            ret_val = "Urban"
+            ret_val = {'ge': ["Urban"], 'lt': ["Semiurban", "Rural"]}
         elif int(val) == 1:
-            ret_val = "Semiurban"
+            ret_val = {'ge': ["Urban", "Semiurban"], 'lt': ["Rural"]}
         elif int(val) == 0:
-            ret_val = "Rural"
+            ret_val = {'ge': ["Urban", "Semiurban", "Rural"], 'lt': []}
     if attr == "Dependents":
         ret_attr = "Dependents"
         if int(val) == 3:
-            ret_val = "3+"
+            ret_val = {'ge': ["3+"], 'lt': ["2", "1", "0"]}
         elif int(val) == 2:
-            ret_val = "2"
+            ret_val = {'ge': ["3+", "2"], 'lt': ["1", "0"]}
         elif int(val) == 1:
-            ret_val = "1"
+            ret_val = {'ge': ["3+", "2", "1"], 'lt': ["0"]}
         elif int(val) == 0:
-            ret_val = "0"
+            ret_val = {'ge': ["3+", "2", "1", "0"], 'lt': []}
     return ret_attr, ret_val
 
 
@@ -179,10 +183,15 @@ def display_aux(tree):
     else:
         attr, val = rollback_data(
             tree.test_attr_name, tree.test_attr_threshold)
-        if type(val) == type(str()):
-            s = f'{attr}'
+        if type(val) == type({}):
+            ge = [f'{x}, ' for x in val['ge']]
+            ge = "".join(ge)
+            lt = [f'{x}, ' for x in val['lt']]
+            lt = "".join(lt)
+            s = f'<----({attr} == {ge[:-2]})--' + f'({attr} == {lt[:-2]})---->'
         else:
-            s = f'{attr} at: ' + "{:.2f}".format(val)
+            s = f'<----({attr} >=' + " {:.2f})--".format(
+                val) + f'({attr} <' + " {:.2f})---->".format(val)
     u = len(s)
     first_line = (x + 1) * ' ' + (n - x - 1) * \
         '_' + s + y * '_' + (m - y) * ' '
@@ -429,6 +438,34 @@ class DecisionTree:
         ln_bef, ln, ln_aft = self._ascii_tree(self.root)
         return "\n".join(ln_bef + [ln] + ln_aft)
 
+    def _ascii_tree(self, node):
+        """Super high-tech tree-printing ascii-art madness."""
+        indent = 7  # adjust this to decrease or increase width of output
+        if type(node) == LeafNode:
+            return [""], "leaf {} {}/{}={:.2f}".format(node.pred_class, node.pred_class_count, node.total_count, node.prob), [""]
+        else:
+            child_ln_bef, child_ln, child_ln_aft = self._ascii_tree(
+                node.child_ge)
+            lines_before = [" "*indent*2 + " " + " " *
+                            indent + line for line in child_ln_bef]
+            lines_before.append(
+                " "*indent*2 + u'\u250c' + " >={}----".format(node.test_attr_threshold) + child_ln)
+            lines_before.extend(
+                [" "*indent*2 + "|" + " "*indent + line for line in child_ln_aft])
+
+            line_mid = node.test_attr_name
+
+            child_ln_bef, child_ln, child_ln_aft = self._ascii_tree(
+                node.child_lt)
+            lines_after = [" "*indent*2 + "|" + " " *
+                           indent + line for line in child_ln_bef]
+            lines_after.append(" "*indent*2 + u'\u2514' +
+                               "- <{}----".format(node.test_attr_threshold) + child_ln)
+            lines_after.extend(
+                [" "*indent*2 + " " + " "*indent + line for line in child_ln_aft])
+
+            return lines_before, line_mid, lines_after
+
 
 def confusion4x4(labels, vals):
     """Create an normalized predicted vs. actual confusion matrix for four classes."""
@@ -466,34 +503,36 @@ if __name__ == '__main__':
                         class_attr_name, min_examples)
 
     # test the tree on the test set and see how we did
-    correct = 0
-    ordering = ['Y', 'N']  # used to count "almost" right
-    test_act_pred = {}
-    for example in test_examples:
-        actual = example[class_attr_name]
-        pred, prob = tree.classify(example)
-        print("{:30} pred {:15} ({:.2f}), actual {:15} {}".format(example[id_attr_name] + ':',
-                                                                  "'" + pred + "'", prob,
-                                                                  "'" + actual + "'",
-                                                                  '*' if pred == actual else ''))
-        if pred == actual:
-            correct += 1
-        test_act_pred[(actual, pred)] = test_act_pred.get(
-            (actual, pred), 0) + 1
-    print("\n\n\n\nTEST DATA\n")
+    # correct = 0
+    # ordering = ['Y', 'N']  # used to count "almost" right
+    # test_act_pred = {}
+    # for example in test_examples:
+    #     actual = example[class_attr_name]
+    #     pred, prob = tree.classify(example)
+    #     print("{:30} pred {:15} ({:.2f}), actual {:15} {}".format(example[id_attr_name] + ':',
+    #                                                               "'" + pred + "'", prob,
+    #                                                               "'" + actual + "'",
+    #                                                               '*' if pred == actual else ''))
+    #     if pred == actual:
+    #         correct += 1
+    #     test_act_pred[(actual, pred)] = test_act_pred.get(
+    #         (actual, pred), 0) + 1
+    # print("\n\n\n\nTEST DATA\n")
 
-    for example in test_data:
-        pred, prob = tree.classify(example)
-        print("{:30} pred {:15} ({:.2f})".format(example[id_attr_name] + ':',
-                                                 "'" + pred + "'", prob,))
+    # for example in test_data:
+    #     pred, prob = tree.classify(example)
+    #     print("{:30} pred {:15} ({:.2f})".format(example[id_attr_name] + ':',
+    #                                              "'" + pred + "'", prob,))
 
-    print("\naccuracy: {:.2f}".format(correct/len(test_examples)))
-    # print(confusion4x4(['Y', 'N'], test_act_pred))
+    # print("\naccuracy: {:.2f}".format(correct/len(test_examples)))
+    # # print(confusion4x4(['Y', 'N'], test_act_pred))
     if os.path.exists("tree.txt"):
         os.remove("tree.txt")
     f = open("tree.txt", "x")
     f.write("\n\n")
+    display_aux(tree.root)
     for line in display_aux(tree.root)[0]:
         f.write(line + "\n")
     f.close()
-    # print(tree)  # visualize the tree in sweet, 8-bit text
+
+    print(tree)  # visualize the tree in sweet, 8-bit text
