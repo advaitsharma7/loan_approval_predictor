@@ -15,4 +15,4 @@ Loan Approval Predictor
 
 *   Used 2 datasets. One for training/testing(accuracy calculation) and second for prediction
 *   First Dataset split into train and test datset. Train Dataset helps create the decision tree. Test data is used to calculate accuracy of the model
-*   Please find a sample tree \[here\]([https://github.com/advaitsharma7/loan\_approval\_predictor/blob/main/tree.txt](https://github.com/advaitsharma7/loan_approval_predictor/blob/main/tree.txt))
+*   Please find a sample tree [here](https://github.com/advaitsharma7/loan_approval_predictor/blob/main/tree.txt)
