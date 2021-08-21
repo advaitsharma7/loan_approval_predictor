@@ -2,7 +2,6 @@ import csv
 import os
 import random
 import math
-import pprint
 import pandas as pd
 
 
@@ -28,24 +27,12 @@ def read_data(csv_path):
     return examples
 
 
-# data['Female'] = [1 if x == "Female" else 0 for x in data['Female']]
-# data['Married'] = [1 if x == "Yes" else 0 for x in data['Married']]
-# data['Graduate'] = [1 if x == "Graduate" else 0 for x in data['Graduate']]
-# data['Self_Employed'] = [1 if x == "Yes" else 0 for x in data['Self_Employed']]
-
-# for keys in data:
-#     print(f"{keys} {set(data[keys]) if len(set(data[keys])) < 10 else -1}")
-
-# print(data['Dependents'][7], type(data['Dependents'][7]))
-
-
 def clean_data(data):
     data = pd.DataFrame(data=data)
 
     data = data.rename({'Gender': 'Female', 'Education': 'Graduate'}, axis=1)
     for key in data:
         col = data[key]
-        # print(key, col[0])
         new_col = []
         if key == "Female":
             for x in col:
@@ -112,6 +99,7 @@ def clean_data(data):
 
 
 def rollback_data(attr, val):
+    # getting the original values of the data back for tree visualization
     ret_attr = attr
     ret_val = val
     if attr == "Female":
@@ -163,7 +151,7 @@ def rollback_data(attr, val):
     return ret_attr, ret_val
 
 
-def display_aux(tree):
+def display(tree):
     """Returns list of strings, width, height, and horizontal coordinate of the root."""
     # No child. Leaf Node
     if hasattr(tree, 'pred_class'):
@@ -175,9 +163,9 @@ def display_aux(tree):
 
     # Two children.
     if hasattr(tree, 'child_ge'):
-        left, n, p, x = display_aux(tree.child_ge)
+        left, n, p, x = display(tree.child_ge)
     if hasattr(tree, 'child_lt'):
-        right, m, q, y = display_aux(tree.child_lt)
+        right, m, q, y = display(tree.child_lt)
     if hasattr(tree, 'pred_class'):
         s = '%s (%s)' % tree.pred_class % tree.prob
     else:
@@ -438,51 +426,6 @@ class DecisionTree:
         ln_bef, ln, ln_aft = self._ascii_tree(self.root)
         return "\n".join(ln_bef + [ln] + ln_aft)
 
-    def _ascii_tree(self, node):
-        """Super high-tech tree-printing ascii-art madness."""
-        indent = 7  # adjust this to decrease or increase width of output
-        if type(node) == LeafNode:
-            return [""], "leaf {} {}/{}={:.2f}".format(node.pred_class, node.pred_class_count, node.total_count, node.prob), [""]
-        else:
-            child_ln_bef, child_ln, child_ln_aft = self._ascii_tree(
-                node.child_ge)
-            lines_before = [" "*indent*2 + " " + " " *
-                            indent + line for line in child_ln_bef]
-            lines_before.append(
-                " "*indent*2 + u'\u250c' + " >={}----".format(node.test_attr_threshold) + child_ln)
-            lines_before.extend(
-                [" "*indent*2 + "|" + " "*indent + line for line in child_ln_aft])
-
-            line_mid = node.test_attr_name
-
-            child_ln_bef, child_ln, child_ln_aft = self._ascii_tree(
-                node.child_lt)
-            lines_after = [" "*indent*2 + "|" + " " *
-                           indent + line for line in child_ln_bef]
-            lines_after.append(" "*indent*2 + u'\u2514' +
-                               "- <{}----".format(node.test_attr_threshold) + child_ln)
-            lines_after.extend(
-                [" "*indent*2 + " " + " "*indent + line for line in child_ln_aft])
-
-            return lines_before, line_mid, lines_after
-
-
-def confusion4x4(labels, vals):
-    """Create an normalized predicted vs. actual confusion matrix for four classes."""
-    n = sum([v for v in vals.values()])
-    abbr = ["".join(w[0] for w in lab.split()) for lab in labels]
-    s = ""
-    s += " actual ___________________________________  \n"
-    for ab, labp in zip(abbr, labels):
-        row = [vals.get((labp, laba), 0)/n for laba in labels]
-        s += "       |        |        |        |        | \n"
-        s += "  {:^4s} | {:5.2f}  | {:5.2f}  | {:5.2f}  | {:5.2f}  | \n".format(
-            ab, *row)
-        s += "       |________|________|________|________| \n"
-    s += "          {:^4s}     {:^4s}     {:^4s}     {:^4s} \n".format(*abbr)
-    s += "                     predicted \n"
-    return s
-
 
 #############################################
 
@@ -503,36 +446,35 @@ if __name__ == '__main__':
                         class_attr_name, min_examples)
 
     # test the tree on the test set and see how we did
-    # correct = 0
-    # ordering = ['Y', 'N']  # used to count "almost" right
-    # test_act_pred = {}
-    # for example in test_examples:
-    #     actual = example[class_attr_name]
-    #     pred, prob = tree.classify(example)
-    #     print("{:30} pred {:15} ({:.2f}), actual {:15} {}".format(example[id_attr_name] + ':',
-    #                                                               "'" + pred + "'", prob,
-    #                                                               "'" + actual + "'",
-    #                                                               '*' if pred == actual else ''))
-    #     if pred == actual:
-    #         correct += 1
-    #     test_act_pred[(actual, pred)] = test_act_pred.get(
-    #         (actual, pred), 0) + 1
-    # print("\n\n\n\nTEST DATA\n")
+    correct = 0
+    ordering = ['Y', 'N']  # used to count "almost" right
+    test_act_pred = {}
+    for example in test_examples:
+        actual = example[class_attr_name]
+        pred, prob = tree.classify(example)
+        print("{:30} pred {:15} ({:.2f}), actual {:15} {}".format(example[id_attr_name] + ':',
+                                                                  "'" + pred + "'", prob,
+                                                                  "'" + actual + "'",
+                                                                  '*' if pred == actual else ''))
+        if pred == actual:
+            correct += 1
+        test_act_pred[(actual, pred)] = test_act_pred.get(
+            (actual, pred), 0) + 1
+    print("\n\n\n\nTEST DATA\n\n")
 
-    # for example in test_data:
-    #     pred, prob = tree.classify(example)
-    #     print("{:30} pred {:15} ({:.2f})".format(example[id_attr_name] + ':',
-    #                                              "'" + pred + "'", prob,))
+    for example in test_data:
+        pred, prob = tree.classify(example)
+        print("{:30} pred {:15} ({:.2f})".format(example[id_attr_name] + ':',
+                                                 "'" + pred + "'", prob,))
 
-    # print("\naccuracy: {:.2f}".format(correct/len(test_examples)))
-    # # print(confusion4x4(['Y', 'N'], test_act_pred))
+    print("\naccuracy: {:.2f}".format(correct/len(test_examples)))
+    print("\ncheck out the tree.txt file for tree visualization")
+
+    # visualize the tree in sweet, 8-bit text and store it in tree.txt file
     if os.path.exists("tree.txt"):
         os.remove("tree.txt")
     f = open("tree.txt", "x")
     f.write("\n\n")
-    display_aux(tree.root)
-    for line in display_aux(tree.root)[0]:
+    for line in display(tree.root)[0]:
         f.write(line + "\n")
     f.close()
-
-    print(tree)  # visualize the tree in sweet, 8-bit text
